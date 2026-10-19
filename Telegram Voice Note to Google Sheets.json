@@ -1,0 +1,399 @@
+{
+  "name": "Telegram Voice Note to Google Sheets",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "id": "fddd3375-460e-4a9b-b7fc-8bf88fa723d6",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.5,
+      "position": [
+        0,
+        208
+      ],
+      "webhookId": "25618a2d-5fec-476a-9d0f-35a8a81f417d",
+      "credentials": {
+        "telegramApi": {
+          "id": "6PEK4AeS5pkuDPhW",
+          "name": "Telegram account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "has-voice",
+              "leftValue": "={{ $json.message.voice?.file_id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "6068af86-841b-4b4b-9db7-d6bfd4e39499",
+      "name": "Is Voice Note?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        224,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "fileId": "={{ $json.message.voice.file_id }}",
+        "additionalFields": {
+          "mimeType": "audio/ogg"
+        }
+      },
+      "id": "2e2246f1-a4e5-4b30-8005-d891fcf71801",
+      "name": "Download Voice File",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        448,
+        112
+      ],
+      "webhookId": "08093218-fbdc-4754-a22e-adf424029a96",
+      "credentials": {
+        "telegramApi": {
+          "id": "6PEK4AeS5pkuDPhW",
+          "name": "Telegram account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "audio",
+        "operation": "analyze",
+        "modelId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "models/gemini-3.8-flash"
+        },
+        "text": "Transcribe this Amharic voice note word for word in Amharic script. Return only the transcription text, with no commentary.",
+        "inputType": "binary",
+        "options": {
+          "maxOutputTokens": 2000
+        }
+      },
+      "id": "0f8ddb80-a3d1-44f7-9d50-07c19c6b9a40",
+      "name": "Transcribe Amharic Audio",
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        672,
+        112
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "DcI2yznQCsyP3Dv5",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Today is {{ $now.setZone(\"Africa/Nairobi\").toFormat(\"yyyy-MM-dd\") }}.\n\nAmharic voice note transcription:\n{{ $json.content.parts[0].text }}",
+        "options": {
+          "systemMessage": "You extract financial transaction details from Amharic voice note transcriptions.\n\nExtract: date, amount, currency, bank, reason.\n- date: YYYY-MM-DD. Resolve relative words (e.g. \"today\", \"yesterday\") using today's date. If no date is mentioned, use today.\n- amount: a number only.\n- currency: ISO code. \"ብር\"/birr = ETB. Default to ETB if not stated.\n- bank: the bank name in English (e.g. ንግድ ባንክ = Commercial Bank of Ethiopia). Use \"Unknown\" if not mentioned.\n- reason: short English description of the purpose.\n\nAlways call the add_transaction_row tool exactly once with the extracted values. Then reply with a short confirmation listing Date, Amount, Currency, Bank and Reason, plus the original transcription. If you cannot find an amount, do not call the tool and instead explain what was missing."
+        }
+      },
+      "id": "ea56e2d7-fc5b-47fc-963c-bf85b94b616c",
+      "name": "Extract Transaction",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        896,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "claude-sonnet-5-5",
+          "cachedResultName": "Claude Sonnet 5.5"
+        },
+        "options": {}
+      },
+      "id": "97024475-82a3-4e9a-a673-509980e8e001",
+      "name": "Claude",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.6,
+      "position": [
+        912,
+        336
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": null,
+          "name": "Gateway credits",
+          "__aiGatewayManaged": true
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "1SBUKUSB6EooB3BTGYZXQuMqt2FFK6cIvINUTi11W8z4",
+          "cachedResultName": "Daily Briefing Log",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1SBUKUSB6EooB3BTGYZXQuMqt2FFK6cIvINUTi11W8z4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gid=0",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1SBUKUSB6EooB3BTGYZXQuMqt2FFK6cIvINUTi11W8z4/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Date": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('date', 'Transaction date in YYYY-MM-DD format') }}",
+            "Amount": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('amount', 'Numeric amount only, no currency symbol', 'number') }}",
+            "Currency": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('currency', 'Currency code, e.g. ETB or USD') }}",
+            "Bank": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('bank', 'Bank name, e.g. Commercial Bank of Ethiopia') }}",
+            "Reason": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('reason', 'Reason / purpose of the transaction, in English') }}"
+          },
+          "schema": [
+            {
+              "id": "Date",
+              "displayName": "Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Amount",
+              "displayName": "Amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Currency",
+              "displayName": "Currency",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Bank",
+              "displayName": "Bank",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Reason",
+              "displayName": "Reason",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "da0cadf7-de58-430c-b89f-a6520ae584cb",
+      "name": "add_transaction_row",
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        1040,
+        336
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "dvJbLPmJFNye8xae",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $(\"Telegram Trigger\").item.json.message.chat.id }}",
+        "text": "={{ $json.output }}",
+        "additionalFields": {
+          "appendAttribution": false,
+          "reply_to_message_id": "={{ $(\"Telegram Trigger\").item.json.message.message_id }}"
+        }
+      },
+      "id": "1da7412c-763f-4bfc-a2d8-06e30822e9c9",
+      "name": "Reply With Result",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1248,
+        112
+      ],
+      "webhookId": "0511bc27-fe29-48d6-bf60-5769cac90413",
+      "credentials": {
+        "telegramApi": {
+          "id": "6PEK4AeS5pkuDPhW",
+          "name": "Telegram account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.message.chat.id }}",
+        "text": "Please send a voice note describing the transaction (amount, currency, bank and reason).",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "6134b5d8-fc13-4227-a0c2-bbdf1608351b",
+      "name": "Ask For Voice Note",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        448,
+        304
+      ],
+      "webhookId": "29571e1d-719f-4325-bfa7-075211e3a923",
+      "credentials": {
+        "telegramApi": {
+          "id": "6PEK4AeS5pkuDPhW",
+          "name": "Telegram account 2"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Is Voice Note?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Voice Note?": {
+      "main": [
+        [
+          {
+            "node": "Download Voice File",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Ask For Voice Note",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Voice File": {
+      "main": [
+        [
+          {
+            "node": "Transcribe Amharic Audio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transcribe Amharic Audio": {
+      "main": [
+        [
+          {
+            "node": "Extract Transaction",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Transaction": {
+      "main": [
+        [
+          {
+            "node": "Reply With Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claude": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Extract Transaction",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "add_transaction_row": {
+      "ai_tool": [
+        [
+          {
+            "node": "Extract Transaction",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true
+  },
+  "versionId": "4541c491-3dae-4f19-8fc3-eb2d60d02f42",
+  "meta": {
+    "instanceId": "e496e7c1702676d244710e553487841977e27898fd1e1c4e9be19c20e06a478c"
+  },
+  "nodeGroups": [],
+  "id": "YvRwxRCAWNvD2BSk",
+  "tags": []
+}
